@@ -6,15 +6,10 @@ import scraperwiki
 import requests
 from bs4 import BeautifulSoup
 
-source_url = 'http://en.wikipedia.org/wiki/List_of_legislatures_by_country'
-html = requests.get(source_url).text
-soup = BeautifulSoup(html, 'html.parser')
-
-title_span = soup.find('span', {'id': 'Legislatures_of_UN_member_states'})
-data_table = title_span.parent.find_next('table')
-
 
 class WikiTable(object):
+  legislature_type = None
+
   def __init__(self, table_element):
     self.element = table_element
     self.column_indices = dict(enumerate(
@@ -27,7 +22,7 @@ class WikiTable(object):
     and id_keys as a list of keys to provide an id when
     concatenated."""
     remaining_rowspans = [0] * len(self.column_indices)
-    data = {}
+    data = {'legislature type': self.legislature_type}
 
     for row in self.element.find_all('tr')[1:]:
       tds = row.find_all('td')
@@ -53,13 +48,46 @@ class WikiTable(object):
 
       scraperwiki.sqlite.save(unique_keys=('id',), data=data)
 
-
-class UNMembersTable(WikiTable):
   def get_data(self, key, td):
     return ' '.join(td.stripped_strings)
 
 
-UNMembersTable(data_table).store_data(
+class UNMembersTable(WikiTable):
+  legislature_type = 'UN member'
+
+
+class SupranationalTable(WikiTable):
+  legislature_type = 'Supranational'
+
+
+class OtherAssemblyTable(WikiTable):
+  legislature_type = 'Other'
+
+
+source_url = 'http://en.wikipedia.org/wiki/List_of_legislatures_by_country'
+html = requests.get(source_url).text
+soup = BeautifulSoup(html, 'html.parser')
+
+supranational_span = soup.find('span', {'id': 'Supranational_legislatures'})
+supranational_table = supranational_span.parent.find_next('table')
+
+SupranationalTable(supranational_table).store_data(
+  keys=('Organisation', 'Name of house'),
+  id_keys=('Organisation', 'Name of house'),
+  )
+
+un_members_title_span = soup.find('span', {'id': 'Legislatures_of_UN_member_states'})
+un_members_table = un_members_title_span.parent.find_next('table')
+
+UNMembersTable(un_members_table).store_data(
+  keys=('Country', 'Name of house'),
+  id_keys=('Country', 'Name of house'),
+  )
+
+other_assembly_span = soup.find('span', {'id': 'Legislatures_of_non-sovereign_countries.2C_dependencies_and_other_territories'})
+other_assembly_table = other_assembly_span.parent.find_next('table')
+
+OtherAssemblyTable(other_assembly_table).store_data(
   keys=('Country', 'Name of house'),
   id_keys=('Country', 'Name of house'),
   )
