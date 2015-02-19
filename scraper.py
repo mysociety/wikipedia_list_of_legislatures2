@@ -64,7 +64,12 @@ class OtherAssemblyTable(WikiTable):
   legislature_type = 'Other'
 
 
+class NonUNTable(WikiTable):
+  legislature_type = 'Non-UN'
+
+
 source_url = 'http://en.wikipedia.org/wiki/List_of_legislatures_by_country'
+
 html = requests.get(source_url).text
 soup = BeautifulSoup(html, 'html.parser')
 
@@ -90,4 +95,12 @@ other_assembly_table = other_assembly_span.parent.find_next('table')
 OtherAssemblyTable(other_assembly_table).store_data(
   keys=('Country', 'Name of house'),
   id_keys=('Country', 'Name of house'),
+  )
+
+non_un_span = soup.find('span', {'id': 'Legislatures_of_non-UN_states_.28including_unrecognized_and_disputed_territories.29'})
+non_un_table = non_un_span.parent.find_next('table')
+
+NonUNTable(non_un_table).store_data(
+  keys=('non-UN state', 'Name of house'),
+  id_keys=('non-UN state', 'Name of house'),
   )
