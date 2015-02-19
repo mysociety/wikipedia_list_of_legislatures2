@@ -1,6 +1,7 @@
 # This is a Morph (https://morph.io) scaper for the list of legislatures from wikipedia
 # including some code snippets below that you should find helpful
 
+import re
 import hashlib
 import scraperwiki
 import requests
@@ -49,7 +50,13 @@ class WikiTable(object):
       scraperwiki.sqlite.save(unique_keys=('id',), data=data)
 
   def get_data(self, key, td):
-    return ' '.join(td.stripped_strings)
+    ret = re.sub(
+      r'\s*\[[\s\d]*\]\s*',
+      ' ',
+      ' '.join(td.stripped_strings),
+      )
+
+    return ret.strip()
 
 
 class UNMembersTable(WikiTable):
