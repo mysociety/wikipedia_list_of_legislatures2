@@ -18,6 +18,9 @@ class WikiTable(object):
       ))
     print self.column_indices
 
+  def add_extra_columns(self, row, data):
+    pass
+
   def store_data(self, keys=None, id_keys=None):
     """Call with keys as a list of column indices to store
     and id_keys as a list of keys to provide an id when
@@ -47,6 +50,9 @@ class WikiTable(object):
         (u'-'.join([data[id_key] for id_key in id_keys])).encode('utf_8')
         ).hexdigest()
 
+      # Add any extra columns for the particular table type before saving
+      self.add_extra_columns(row, data)
+
       scraperwiki.sqlite.save(unique_keys=('id',), data=data)
 
   def get_data(self, key, td):
@@ -59,19 +65,45 @@ class WikiTable(object):
     return ret.strip()
 
 
-class UNMembersTable(WikiTable):
-  legislature_type = 'UN member'
-
-
 class SupranationalTable(WikiTable):
   legislature_type = 'Supranational'
 
 
-class OtherAssemblyTable(WikiTable):
+class CountryTable(WikiTable):
+  def split_translations(self, data, key):
+    # Knows possible formats
+    # <name_en> (<lang code>) (<other_names>)
+    # <name_en> (<other_names>)
+    # <name_en>
+    text = data[key]
+    data[key + '_en'] = text.split('(', 1)[0].strip()
+
+    groups = re.findall(r'\(([^\)]+)\)', text)
+    if groups:
+      data[key + '_other'] = groups.pop(-1)
+
+    if groups:
+      print "Interesting text for {}: {}".format(key, text.encode('utf-8'))
+
+    # match = re.match(r'\s*([^\(]+?)?\s*(?:\(\s*([^\)]+?)\s*\))?\s*$', text)
+    # groups = match.groups()
+
+  def add_extra_columns(self, row, data):
+    # legislature_name_en, legislature_name_other
+    # house_name_en, house_name_other
+    self.split_translations(data, 'Overall name of legislature')
+    self.split_translations(data, 'Name of house')
+
+
+class UNMembersTable(CountryTable):
+  legislature_type = 'UN member'
+
+
+class OtherAssemblyTable(CountryTable):
   legislature_type = 'Other'
 
 
-class NonUNTable(WikiTable):
+class NonUNTable(CountryTable):
   legislature_type = 'Non-UN'
 
 
